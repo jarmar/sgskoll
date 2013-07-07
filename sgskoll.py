@@ -5,6 +5,8 @@ import os
 import urllib
 import urllib2
 import json
+import ConfigParser
+from itertools import ifilter
 
 AREAS_URL = 'http://marknad.sgsstudentbostader.se/API/Service/SearchServiceHandler.ashx?objectMainGroupNo=1&visibleClient=true&visibleProfile=true&asTree=true&Method=GetSearchAreas'
 
@@ -55,19 +57,62 @@ def get_areas_list(data, parentname=''):
         res.extend(get_areas_list(child, data["Description"]))
     return res
 
+def lookup_areas(userlist):
+    u"""Hämta lista på alla områden, kolla upp de av användaren angivna
+        områdesnamnen. Tar lista med strängar,
+        returnerar lista med {Id, Description, Area}."""
+    print "Fetching list of all areas..."
+    all_areas = load_areas(fetch_areas())
+    res = []
+    idres = []
+    for userarea in userlist:
+        try:
+            found = next(area for area in all_areas if
+                         area["Description"] == userarea)
+            res.append(found)
+            idres.append(found["Id"])
+        except StopIteration:
+            print "Error: Couldn't find any match for \"%s\"." % userarea
+    if len(res) < len(userlist):
+        print "Error: Some given areas couldn't be matched."
+    else:
+        print "All given areas successfully matched."
+    return (res, idres)
+
+def load_config():
+    res = {}
+    config = ConfigParser.ConfigParser()
+    try:
+        config.readfp(open('sgskoll.conf'))
+    except IOError:
+        #TODO: default config
+        pass
+    with open('desired_areas.conf') as areafile:
+        #TODO: default config
+        config.set(u"Search Preferences", u"desired_areas",
+                   areafile.read().splitlines())
+    return config
+
 if __name__ == '__main__':
-    print "Downloading list of areas.."
-    areas = load_areas(fetch_areas())
+    print "Loading config..."
+    conf = load_config()
+    print "Looking up desired areas..."
+    areas, area_ids = lookup_areas(conf.get("Search Preferences",
+                                            "desired_areas"))
+    print "Found the following areas:"
     for area in areas:
         print "%(Id)s: %(Area)s: %(Description)s" % area
 
     if not os.path.exists('sampledata'):
         print "Downloading search data..."
         with open('sampledata', 'w') as f:
-            f.write(fetch().read())
+            f.write(fetch_search_data().read())
 
     data = load_search_data(open('sampledata'))
-    for obj in data["Result"]:
-        print ("%(CountInterest)d %(Street)s") % obj
+    print "Found the following matches:"
+    filterfn = lambda obj: obj["RentPerMonthSort"] >= int(conf.get("Search Preferences", "min_rent")) and obj["RentPerMonthSort"] <= int(conf.get("Search Preferences", "max_rent")) and obj["ObjectAreaSort"] >= int(conf.get("Search Preferences", "min_area")) and obj["ObjectAreaSort"] <= int(conf.get("Search Preferences", "max_area")) and obj["ObjectSubGroupNo"] in map(int, conf.get("Search Preferences", "apartment_types").split(",")) and obj["SeekAreaNo"] in area_ids
+
+    for obj in ifilter(filterfn, data["Result"]):
+        print ("%(Street)s (%(ObjectAreaSort)d kvm, %(RentPerMonthSort)d kr)") % obj
 
 
