@@ -14,7 +14,6 @@ Placera en fil som heter `Momentum-API-KEY.secret` i samma mapp, innehållandes 
 
 Själva databehandlingen är simpel. Lite `filter` liksom.
 
-* Hitta ett sätt att lista alla områden
 * Konfigformat för att specificera sökprofil
 * Notifiering enligt sökprofil
 
