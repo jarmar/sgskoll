@@ -113,7 +113,7 @@ def lookup_areas(userlist):
     if len(res) < len(userlist):
         sys.stderr.write(u"  WARNING: Some given areas couldn't be matched.\n")
     else:
-        print u"OK"
+        print u"All areas matched OK"
     return (res, idres)
 
 def load_config():
