@@ -15,7 +15,7 @@ AREAS_URL = u'http://marknad.sgsstudentbostader.se/API/Service/SearchServiceHand
 
 SEARCH_URL = u'http://marknad.sgsstudentbostader.se/API/Service/SearchServiceHandler.ashx'
 
-ITEMINFO_URL = u'http://marknad.sgsstudentbostader.se/pgObjectInformation.aspx?company=1&obj=%(ObjectNo)s'
+ITEMINFO_URL = u'http://marknad.sgsstudentbostader.se/pgObjectInformation.aspx?company=1&obj={ObjectNo}'
 
 SEARCH_PARAMS = {
     u"Parm1": u'{"CompanyNo":1,"SyndicateNo":1,"ObjectMainGroupNo":1,"Advertisements":[{"No":-1}],"RentLimit":{"Min":0,"Max":15000},"AreaLimit":{"Min":0,"Max":150},"Page":1,"Take":10,"SortOrder":"EndPeriodMP asc, CompanyNo asc,SeekAreaDescription asc,StreetName asc","ReturnParameters":["ObjectNo","FirstEstateImageUrl","Street","SeekAreaDescription","PlaceName","ObjectSubDescription","ObjectArea","RentPerMonth","MarketPlaceDescription","CountInterest","FirstInfoTextShort","FirstInfoText","EndPeriodMP","FreeFrom","SeekAreaUrl","Latitude","Longitude","BoardNo"]}',
@@ -28,9 +28,9 @@ SEARCH_HEADERS = {
     u"X-Momentum-API-KEY": u'u15fJ8yRMCIu////+aEYR7+XJwj1hiE9gIXfoo/eje4=',
     u"X-Requested-With": u'XMLHttpRequest' }
 
-OBJECT_FORMAT = (u"  %(FreeFrom)s - %(Street)s vån. %(ObjectFloor)s " +
-                 u"(%(ObjectAreaSort)d kvm, %(RentPerMonthSort)d kr): " +
-                 u"%(CountInterest)d interested.")
+OBJECT_FORMAT = u"  {FreeFrom} - {Street} vån. {ObjectFloor} " \
+                u"({ObjectAreaSort} kvm, {RentPerMonthSort} kr): " \
+                u"{CountInterest} interested."
 
 
 def fetch_search_data():
@@ -105,9 +105,10 @@ def lookup_areas(userlist):
                     idres.append(area[u"Id"])
                     break
             except StopIteration:
-                sys.stderr.write((u"  WARNING: Couldn't find any match " +
-                                  u"for \"%s\". Did you mean \"%s\"?\n") %
-                                  (userarea, best_match[u"Description"]))
+                sys.stderr.write((u"  WARNING: Couldn't find any match " \
+                                  u"for \"{0}\". Did you mean " \
+                                  u"\"{1[Description]}\"?\n").format(
+                                    userarea, best_match))
                 break
     if len(res) < len(userlist):
         sys.stderr.write(u"  WARNING: Some given areas couldn't be matched.\n")
@@ -149,14 +150,14 @@ def filterfn(search_prefs, obj):
             obj[u"SeekAreaNo"] in search_prefs[u"area_ids"])
 
 def obj_format_string(obj):
-    area_rent = u"%(ObjectAreaSort)d kvm, %(RentPerMonthSort)d kr"
+    area_rent = u"{ObjectAreaSort} kvm, {RentPerMonthSort} kr"
     for prop in obj[u"Properties"]:
         if prop[u"SyndicatePropertyNo"] == 5: # 10-mån
             area_rent = area_rent + u" [10 mån]"
             break
-    return (u"  %(FreeFrom)s - %(Street)s vån. %(ObjectFloor)s " +
-            u"(" + area_rent + u"): " +
-            u"%(CountInterest)d interested.")
+    return u"  {FreeFrom} - {Street} vån. {ObjectFloor} " \
+           u"(" + area_rent + u"): " \
+           u"{CountInterest} interested."
 
 
 if __name__ == u'__main__':
@@ -165,9 +166,9 @@ if __name__ == u'__main__':
     search_prefs = load_search_prefs(conf)
     print u"Using the following desired areas:"
     for area in search_prefs[u"areas"]:
-        print u"  %(Id)s: %(Area)s: %(Description)s" % area
-    print (u"Preferences: rent in [%(min_rent)d,%(max_rent)d] kr, " +
-           u"area in [%(min_area)d,%(max_area)d] kvm") % search_prefs
+        print u"  {Id}: {Area}: {Description}".format(**area)
+    print u"Preferences: rent in [{min_rent},{max_rent}] kr, " \
+          u"area in [{min_area},{max_area}] kvm".format(**search_prefs)
 
     if not os.path.exists(u'sampledata'):
         print u"Downloading search data..."
@@ -179,15 +180,15 @@ if __name__ == u'__main__':
     data = load_search_data(open(u'sampledata'))
 
     print u"" # lol
-    print (u"Most wanted is in %(SeekAreaDescription)s:\n" +
-           OBJECT_FORMAT) % max(data[u"Result"],
-                                key=lambda o: o["CountInterest"])
+    print (u"Most wanted is in {SeekAreaDescription}:\n" +
+           OBJECT_FORMAT).format(**max(data[u"Result"],
+                                   key=lambda o: o["CountInterest"]))
 
     print u""
     print u"Found the following matches:"
 
     for obj in ifilter(partial(filterfn, search_prefs), data[u"Result"]):
-        print obj_format_string(obj) % obj
-        print u"    " + ITEMINFO_URL % obj
+        print obj_format_string(obj).format(**obj)
+        print u"    " + ITEMINFO_URL.format(**obj)
 
 
