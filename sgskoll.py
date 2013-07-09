@@ -180,7 +180,7 @@ if __name__ == u'__main__':
     data = load_search_data(open(u'sampledata'))
 
     print u"" # lol
-    print (u"Most wanted is in {SeekAreaDescription}:\n" +
+    print (u"Most wanted is at {SeekAreaDescription}:\n" +
            OBJECT_FORMAT).format(**max(data[u"Result"],
                                    key=lambda o: o["CountInterest"]))
 
