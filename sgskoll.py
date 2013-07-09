@@ -184,11 +184,15 @@ if __name__ == u'__main__':
            OBJECT_FORMAT).format(**max(data[u"Result"],
                                    key=lambda o: o["CountInterest"]))
 
-    print u""
-    print u"Found the following matches:"
+    results = filter(partial(filterfn, search_prefs), data[u"Result"])
 
-    for obj in ifilter(partial(filterfn, search_prefs), data[u"Result"]):
-        print obj_format_string(obj).format(**obj)
-        print u"    " + ITEMINFO_URL.format(**obj)
+    print u""
+    if not results:
+        print u"No matches were found. Maybe you have too high standards."
+    else:
+        print u"Found the following matches:"
+        for obj in results:
+            print obj_format_string(obj).format(**obj)
+            print u"    " + ITEMINFO_URL.format(**obj)
 
 
