@@ -194,7 +194,7 @@ if __name__ == u'__main__':
            OBJECT_FORMAT).format(**most_wanted)
     print u"    " + ITEMINFO_URL.format(**most_wanted)
 
-    results = get_results(search_prefs, data)
+    results = get_matches(search_prefs, data)
 
     print u""
     if not results:
