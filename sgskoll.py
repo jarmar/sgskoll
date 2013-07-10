@@ -125,10 +125,14 @@ def load_config():
         #TODO: default config
         pass
     with open(u'desired_areas.conf') as areafile:
-        #TODO: default config
-        config.set(u"Search Preferences", u"desired_areas",
-                   map(lambda s: s.decode('utf-8'),
-                       areafile.read().splitlines()))
+        #TODO: default config, flytta till load_search_prefs
+        areas = []
+        for line in areafile.read().splitlines():
+            stripped = line.decode(u'utf-8').split(u'#')[0].strip()
+            if stripped:
+                areas.append(stripped)
+        config.set(u"Search Preferences", u"desired_areas", areas)
+
     return config
 
 def load_search_prefs(config):
