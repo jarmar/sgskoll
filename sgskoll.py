@@ -188,9 +188,11 @@ if __name__ == u'__main__':
     data = load_search_data(open(u'sampledata'))
 
     print u"" # lol
+
+    most_wanted = max(data[u"Result"], key=lambda o: o[u"CountInterest"])
     print (u"Most wanted is at {SeekAreaDescription}:\n" +
-           OBJECT_FORMAT).format(**max(data[u"Result"],
-                                   key=lambda o: o["CountInterest"]))
+           OBJECT_FORMAT).format(**most_wanted)
+    print u"    " + ITEMINFO_URL.format(**most_wanted)
 
     results = get_results(search_prefs, data)
 
