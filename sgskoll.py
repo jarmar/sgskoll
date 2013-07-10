@@ -145,6 +145,10 @@ def load_search_prefs(config):
     res[u"areas"], res[u"area_ids"] = lookup_areas(res[u"desired_areas"])
     return res
 
+def get_matches(search_prefs, data):
+    return filter(partial(filterfn, search_prefs), data[u"Result"])
+
+
 def filterfn(search_prefs, obj):
     return (obj[u"RentPerMonthSort"] >= search_prefs[u"min_rent"] and
             obj[u"RentPerMonthSort"] <= search_prefs[u"max_rent"] and
@@ -188,7 +192,7 @@ if __name__ == u'__main__':
            OBJECT_FORMAT).format(**max(data[u"Result"],
                                    key=lambda o: o["CountInterest"]))
 
-    results = filter(partial(filterfn, search_prefs), data[u"Result"])
+    results = get_results(search_prefs, data)
 
     print u""
     if not results:
