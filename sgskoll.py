@@ -1,89 +1,88 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import os
 import sys
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
 import json
 import difflib
-import ConfigParser
-from itertools import ifilter
+import configparser
+
 from functools import partial
 
-AREAS_URL = u'http://marknad.sgsstudentbostader.se/API/Service/SearchServiceHandler.ashx?objectMainGroupNo=1&visibleClient=true&visibleProfile=true&asTree=true&Method=GetSearchAreas'
+AREAS_URL = 'http://marknad.sgsstudentbostader.se/API/Service/SearchServiceHandler.ashx?objectMainGroupNo=1&visibleClient=true&visibleProfile=true&asTree=true&Method=GetSearchAreas'
 
-SEARCH_URL = u'http://marknad.sgsstudentbostader.se/API/Service/SearchServiceHandler.ashx'
+SEARCH_URL = 'http://marknad.sgsstudentbostader.se/API/Service/SearchServiceHandler.ashx'
 
-ITEMINFO_URL = u'http://marknad.sgsstudentbostader.se/pgObjectInformation.aspx?company=1&obj={ObjectNo}'
+ITEMINFO_URL = 'http://marknad.sgsstudentbostader.se/pgObjectInformation.aspx?company=1&obj={ObjectNo}'
 
 SEARCH_PARAMS = {
-    u"Parm1": u'{"CompanyNo":1,"SyndicateNo":1,"ObjectMainGroupNo":1,"Advertisements":[{"No":-1}],"RentLimit":{"Min":0,"Max":15000},"AreaLimit":{"Min":0,"Max":150},"Page":1,"Take":10,"SortOrder":"EndPeriodMP asc, CompanyNo asc,SeekAreaDescription asc,StreetName asc","ReturnParameters":["ObjectNo","FirstEstateImageUrl","Street","SeekAreaDescription","PlaceName","ObjectSubDescription","ObjectArea","RentPerMonth","MarketPlaceDescription","CountInterest","FirstInfoTextShort","FirstInfoText","EndPeriodMP","FreeFrom","SeekAreaUrl","Latitude","Longitude","BoardNo"]}',
-    u"CallbackMethod": u'PostObjectSearch',
-    u"CallbackParmCount": u'1',
-    u"__WWEVENTCALLBACK": u'' }
+    "Parm1": '{"CompanyNo":1,"SyndicateNo":1,"ObjectMainGroupNo":1,"Advertisements":[{"No":-1}],"RentLimit":{"Min":0,"Max":15000},"AreaLimit":{"Min":0,"Max":150},"Page":1,"Take":10,"SortOrder":"EndPeriodMP asc, CompanyNo asc,SeekAreaDescription asc,StreetName asc","ReturnParameters":["ObjectNo","FirstEstateImageUrl","Street","SeekAreaDescription","PlaceName","ObjectSubDescription","ObjectArea","RentPerMonth","MarketPlaceDescription","CountInterest","FirstInfoTextShort","FirstInfoText","EndPeriodMP","FreeFrom","SeekAreaUrl","Latitude","Longitude","BoardNo"]}',
+    "CallbackMethod": 'PostObjectSearch',
+    "CallbackParmCount": '1',
+    "__WWEVENTCALLBACK": '' }
 
 SEARCH_HEADERS = {
-    u"Accept": u'application/json,text/*',
-    u"X-Momentum-API-KEY": u'u15fJ8yRMCIu////+aEYR7+XJwj1hiE9gIXfoo/eje4=',
-    u"X-Requested-With": u'XMLHttpRequest' }
+    "Accept": 'application/json,text/*',
+    "X-Momentum-API-KEY": 'u15fJ8yRMCIu////+aEYR7+XJwj1hiE9gIXfoo/eje4=',
+    "X-Requested-With": 'XMLHttpRequest' }
 
-OBJECT_FORMAT = u"  {FreeFrom} - {Street} vån. {ObjectFloor} " \
-                u"({ObjectAreaSort} kvm, {RentPerMonthSort} kr): " \
-                u"{CountInterest} interested."
+OBJECT_FORMAT = "  {FreeFrom} - {Street} vån. {ObjectFloor} " \
+                "({ObjectAreaSort} kvm, {RentPerMonthSort} kr): " \
+                "{CountInterest} interested."
 
 
 def fetch_search_data():
-    u"""Hämta sökresultat. Returnerar file-like."""
-    request = urllib2.Request(SEARCH_URL,
-                              urllib.urlencode(SEARCH_PARAMS),
+    """Hämta sökresultat. Returnerar file-like."""
+    request = urllib.request.Request(SEARCH_URL,
+                              urllib.parse.urlencode(SEARCH_PARAMS).encode('utf-8'),
                               SEARCH_HEADERS)
-    return urllib2.urlopen(request)
+    return urllib.request.urlopen(request)
 
-def load_search_data(fp):
-    u"""Generöst namngiven metod."""
-    data = json.load(fp)
-    for obj in data[u"Result"]:
-        obj[u"ObjectFloor"] = obj[u"ObjectFloor"].strip()
+def load_search_data(s):
+    """Generöst namngiven metod. Tar en _sträng_"""
+    data = json.loads(s)
+    for obj in data["Result"]:
+        obj["ObjectFloor"] = obj["ObjectFloor"].strip()
     return data
 
 def fetch_areas():
-    u"""Hämta hem lista på områden. Returnerar file-like."""
-    request = urllib2.Request(AREAS_URL, headers=SEARCH_HEADERS)
-    return urllib2.urlopen(request)
+    """Hämta hem lista på områden. Returnerar file-like."""
+    request = urllib.request.Request(AREAS_URL, headers=SEARCH_HEADERS)
+    return urllib.request.urlopen(request)
 
-def load_areas(fp):
-    u"""Gör sans av den mottagna areadatan."""
+def load_areas(s):
+    """Gör sans av den mottagna areadatan."""
     # dubbelt escapead json. enterprise!
-    return get_areas_list(json.loads(json.load(fp)))
+    return get_areas_list(json.loads(json.loads(s)))
 
 def get_areas_list(data, parentname=''):
-    u"""Omvandla till mindre obtust format."""
-    if data[u"Childs"] == []:
-        return [{u"Id": data[u"Id"],
-                 u"Description": data[u"Description"],
-                 u"Area": parentname}]
+    """Omvandla till mindre obtust format."""
+    if data["Childs"] == []:
+        return [{"Id": data["Id"],
+                 "Description": data["Description"],
+                 "Area": parentname}]
     res = []
-    for child in data[u"Childs"]:
-        res.extend(get_areas_list(child, data[u"Description"]))
+    for child in data["Childs"]:
+        res.extend(get_areas_list(child, data["Description"]))
     return res
 
 def lookup_areas(userlist):
-    u"""Hämta lista på alla områden, kolla upp de av användaren angivna
+    """Hämta lista på alla områden, kolla upp de av användaren angivna
         områdesnamnen. Tar lista med strängar,
         returnerar lista med {Id, Description, Area}."""
-    print u"Desired areas: "
+    print("Desired areas: ")
     for userarea in userlist:
-        print u"  " + userarea
-    print u"Fetching list of all areas...",
+        print("  " + userarea)
+    print("Fetching list of all areas...", end=' ')
     try:
         areas_fp = fetch_areas()
-        print "OK"
-    except urllib2.URLError as e:
-        sys.stderr.write(u"ERROR: failed fetching list of all areas\n")
+        print("OK")
+    except urllib.error.URLError as e:
+        sys.stderr.write("ERROR: failed fetching list of all areas\n")
         raise
-    print u"Matching given areas..."
-    all_areas = load_areas(fetch_areas())
+    print("Matching given areas...")
+    all_areas = load_areas(fetch_areas().read().decode('utf-8'))
     res = []
     idres = []
     matcher = difflib.SequenceMatcher()
@@ -94,115 +93,114 @@ def lookup_areas(userlist):
         it = iter(all_areas)
         while True:
             try:
-                area = it.next()
-                matcher.set_seq1(area[u"Description"])
+                area = next(it)
+                matcher.set_seq1(area["Description"])
                 ratio = matcher.ratio()
                 if ratio > best_ratio:
                     best_ratio = ratio
                     best_match = area
-                if area[u"Description"] == userarea:
+                if area["Description"] == userarea:
                     res.append(area)
-                    idres.append(area[u"Id"])
+                    idres.append(area["Id"])
                     break
             except StopIteration:
-                sys.stderr.write((u"  WARNING: Couldn't find any match " \
-                                  u"for \"{0}\". Did you mean " \
-                                  u"\"{1[Description]}\"?\n").format(
+                sys.stderr.write(("  WARNING: Couldn't find any match " \
+                                  "for \"{0}\". Did you mean " \
+                                  "\"{1[Description]}\"?\n").format(
                                     userarea, best_match))
                 break
     if len(res) < len(userlist):
-        sys.stderr.write(u"  WARNING: Some given areas couldn't be matched.\n")
+        sys.stderr.write("  WARNING: Some given areas couldn't be matched.\n")
     else:
-        print u"All areas matched OK"
+        print("All areas matched OK")
     return (res, idres)
 
 def load_config():
     res = {}
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     try:
-        config.readfp(open(u'sgskoll.conf'))
+        config.readfp(open('sgskoll.conf', encoding='utf-8'))
     except IOError:
         #TODO: default config
         pass
-    with open(u'desired_areas.conf') as areafile:
-        #TODO: default config, flytta till load_search_prefs
-        areas = []
-        for line in areafile.read().splitlines():
-            stripped = line.decode(u'utf-8').split(u'#')[0].strip()
-            if stripped:
-                areas.append(stripped)
-        config.set(u"Search Preferences", u"desired_areas", areas)
 
     return config
 
 def load_search_prefs(config):
     res = {}
-    for key, val in config.items(u"Search Preferences"):
+    for key, val in config.items("Search Preferences"):
         res[key] = val
-    for key in [u"min_rent",u"max_rent",u"min_area",u"max_area"]:
+    for key in ["min_rent","max_rent","min_area","max_area"]:
         res[key] = int(res[key])
-    res[u"apartment_types"] = map(int, res[u"apartment_types"].split(u","))
-    res[u"areas"], res[u"area_ids"] = lookup_areas(res[u"desired_areas"])
+    with open('desired_areas.conf', encoding='utf-8') as areafile:
+        #TODO: default config, flytta till load_search_prefs
+        res["desired_areas"] = []
+        for line in areafile.read().splitlines():
+            stripped = line.split('#')[0].strip()
+            if stripped:
+                res["desired_areas"].append(stripped)
+    res["apartment_types"] = list(map(int, res["apartment_types"].split(",")))
+    res["areas"], res["area_ids"] = lookup_areas(res["desired_areas"])
     return res
 
 def get_matches(search_prefs, data):
-    return filter(partial(filterfn, search_prefs), data[u"Result"])
+    return list(filter(partial(filterfn, search_prefs), data["Result"]))
 
 
 def filterfn(search_prefs, obj):
-    return (obj[u"RentPerMonthSort"] >= search_prefs[u"min_rent"] and
-            obj[u"RentPerMonthSort"] <= search_prefs[u"max_rent"] and
-            obj[u"ObjectAreaSort"] >= search_prefs[u"min_area"] and
-            obj[u"ObjectAreaSort"] <= search_prefs[u"max_area"] and
-            obj[u"ObjectSubGroupNo"] in search_prefs[u"apartment_types"] and
-            obj[u"SeekAreaNo"] in search_prefs[u"area_ids"])
+    return (obj["RentPerMonthSort"] >= search_prefs["min_rent"] and
+            obj["RentPerMonthSort"] <= search_prefs["max_rent"] and
+            obj["ObjectAreaSort"] >= search_prefs["min_area"] and
+            obj["ObjectAreaSort"] <= search_prefs["max_area"] and
+            obj["ObjectSubGroupNo"] in search_prefs["apartment_types"] and
+            obj["SeekAreaNo"] in search_prefs["area_ids"])
 
 def obj_format_string(obj):
-    area_rent = u"{ObjectAreaSort} kvm, {RentPerMonthSort} kr"
-    for prop in obj[u"Properties"]:
-        if prop[u"SyndicatePropertyNo"] == 5: # 10-mån
-            area_rent = area_rent + u" [10 mån]"
+    area_rent = "{ObjectAreaSort} kvm, {RentPerMonthSort} kr"
+    for prop in obj["Properties"]:
+        if prop["SyndicatePropertyNo"] == 5: # 10-mån
+            area_rent = area_rent + " [10 mån]"
             break
-    return u"  {FreeFrom} - {Street} vån. {ObjectFloor} " \
-           u"(" + area_rent + u"): " \
-           u"{CountInterest} interested."
+    return "  {FreeFrom} - {Street} vån. {ObjectFloor} " \
+           "(" + area_rent + "): " \
+           "{CountInterest} interested."
 
 
-if __name__ == u'__main__':
-    print u"Loading config..."
+if __name__ == '__main__':
+    print("Loading config...")
     conf = load_config()
     search_prefs = load_search_prefs(conf)
-    print u"Using the following desired areas:"
-    for area in search_prefs[u"areas"]:
-        print u"  {Id}: {Area}: {Description}".format(**area)
-    print u"Preferences: rent in [{min_rent},{max_rent}] kr, " \
-          u"area in [{min_area},{max_area}] kvm".format(**search_prefs)
+    print("Using the following desired areas:")
+    for area in search_prefs["areas"]:
+        print("  {Id}: {Area}: {Description}".format(**area))
+    print("Preferences: rent in [{min_rent},{max_rent}] kr, " \
+          "area in [{min_area},{max_area}] kvm".format(**search_prefs))
 
-    if not os.path.exists(u'sampledata'):
-        print u"Downloading search data..."
-        with open(u'sampledata', u'w') as f:
+    if not os.path.exists('sampledata'):
+        print("Downloading search data...")
+        with open('sampledata', 'wb') as f:
             f.write(fetch_search_data().read())
     else:
-        print u"Using previously downloaded data..."
+        print("Using previously downloaded data...")
 
-    data = load_search_data(open(u'sampledata'))
+    data = load_search_data(open('sampledata', encoding='utf-8').read())
 
-    print u"" # lol
+    print("") # lol
 
-    most_wanted = max(data[u"Result"], key=lambda o: o[u"CountInterest"])
-    print (u"Most wanted is at {SeekAreaDescription}:\n" +
-           OBJECT_FORMAT).format(**most_wanted)
-    print u"    " + ITEMINFO_URL.format(**most_wanted)
+    most_wanted = max(data["Result"], key=lambda o: o["CountInterest"])
+    print(("Most wanted is at {SeekAreaDescription}:\n" +
+           OBJECT_FORMAT).format(**most_wanted))
+    print("    " + ITEMINFO_URL.format(**most_wanted))
 
     results = get_matches(search_prefs, data)
 
-    print u""
+    print("")
     if not results:
-        print u"No matches were found. Maybe you have too high standards."
+        print("No matches were found. Maybe you have too high standards.")
     else:
-        print u"Found the following matches:"
+        print("Found the following matches:")
         for obj in results:
-            print obj_format_string(obj).format(**obj)
-            print u"    " + ITEMINFO_URL.format(**obj)
+            print(obj_format_string(obj).format(**obj))
+            print("    " + ITEMINFO_URL.format(**obj))
 
 
